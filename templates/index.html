@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ทดสอบ Webhook</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1rem;
+      margin: 0;
+      background-color: #f9f9f9;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh; /* ทำให้เนื้อหาอยู่ตรงกลางหน้าจอ */
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      margin-bottom: 1rem;
+      padding: 2rem;
+      text-align: center;
+      width: 90%;
+      max-width: 400px; /* จำกัดความกว้างสูงสุด */
+    }
+    button {
+      background-color: #007bff; /* สีน้ำเงิน */
+      color: #fff;
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      width: 100%; /* ปุ่มเต็มความกว้างของการ์ด */
+    }
+    button:hover {
+      background-color: #0056b3; /* สีน้ำเงินเข้มขึ้นเมื่อ Hover */
+    }
+    .loading {
+      display: none;
+      text-align: center;
+      margin-top: 1rem;
+      font-size: 1rem;
+      color: #555;
+    }
+    .result {
+      margin-top: 1rem;
+      font-size: 1rem;
+      word-wrap: break-word;
+      white-space: pre-wrap; /* เพื่อให้ขึ้นบรรทัดใหม่ได้ */
+    }
+    .result.success {
+      color: green;
+    }
+    .result.error {
+      color: red;
+    }
+    .result.warning {
+      color: orange;
+    }
+  </style>
+</head>
+<body>
+  <h1>ทดสอบ n8n Webhook</h1>
+  <div class="card">
+    <button id="test-webhook-button">Trigger Webhook</button>
+    <div id="loading" class="loading">🔄 กำลังส่งคำขอ...</div>
+    <div id="result" class="result"></div>
+  </div>
+
+  <script>
+    const webhookTestUrl = "/trigger-webhook"; // Endpoint ที่ Flask จะรับ
+    const testButton     = document.getElementById("test-webhook-button");
+    const loader         = document.getElementById("loading");
+    const resultDiv      = document.getElementById("result");
+
+    testButton.addEventListener("click", () => {
+      loader.style.display = "block";
+      resultDiv.innerHTML  = ""; // ล้างผลลัพธ์เก่า
+      resultDiv.className  = "result"; // ล้าง class สี
+
+      fetch(webhookTestUrl)
+        .then(response => {
+          loader.style.display = "none";
+          if (response.ok) {
+            resultDiv.textContent = `✅ สำเร็จ! Status: ${response.status}`;
+            resultDiv.classList.add("success");
+          } else {
+            resultDiv.innerHTML = `❌ ล้มเหลว! Status: ${response.status}<br>โปรดตรวจสอบ n8n Webhook URL ของคุณ`;
+            resultDiv.classList.add("error");
+          }
+        })
+        .catch(error => {
+          loader.style.display = "none";
+          resultDiv.innerHTML = `⚠️ เกิดข้อผิดพลาดในการเชื่อมต่อ: ${error.message}<br>
+            โปรดตรวจสอบ Console สำหรับรายละเอียดเพิ่มเติม และ URL ของคุณ`;
+          resultDiv.classList.add("warning");
+          console.error("Fetch Error:", error);
+        });
+    });
+  </script>
+</body>
+</html>

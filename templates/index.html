@@ -42,6 +42,15 @@
       color: #333;
       margin: 0;
       text-align: center;
+      display: flex; /* ทำให้ H2 เป็น flex container */
+      align-items: center; /* จัดให้อยู่กึ่งกลางในแนวตั้ง */
+      justify-content: center; /* จัดให้อยู่กึ่งกลางในแนวนอน */
+      gap: 0.5rem; /* ระยะห่างระหว่างข้อความกับตัวเลข */
+    }
+    .status-count {
+        font-size: 0.9em; /* ทำให้ตัวเลขเล็กกว่าหัวข้อเล็กน้อย */
+        color: #666; /* สีเทาอ่อนลง */
+        font-weight: normal; /* ไม่ต้องตัวหนา */
     }
     .controls {
       display: flex;
@@ -142,23 +151,20 @@
   <h1>n8n Workflow Dashboard</h1>
 
   <div class="card-container">
-    <!-- Card สำหรับ create_idea (มี Dropdown เลือกหัวข้อ) -->
     <div class="card full-width">
       <h2>สร้าง Idea (เลือกหัวข้อ)</h2>
       <div class="controls">
         <select id="category-select" disabled>
-          <option value="">กำลังโหลด Category...</option>
-          <!-- Options จะถูกเพิ่มโดย JavaScript -->
-        </select>
+          <option value="">กำลังโหลดหัวข้อ...</option>
+          </select>
         <button id="btn-create-idea" data-webhook-type="create_idea" disabled>Trigger สร้าง Idea</button>
         <div id="loading-create_idea" class="loading">🔄 กำลังส่งคำขอ...</div>
       </div>
       <div id="result-create_idea" class="result"></div>
     </div>
 
-    <!-- Card สำหรับ create_image_prompt -->
     <div class="card">
-      <h2>สร้าง Image Prompt</h2>
+      <h2>สร้าง Image Prompt <span id="count-ready-prompt" class="status-count"></span></h2>
       <div class="controls">
         <button id="btn-create-image-prompt" data-webhook-type="create_image_prompt">Trigger สร้าง Image Prompt</button>
         <div id="loading-create_image_prompt" class="loading">🔄 กำลังส่งคำขอ...</div>
@@ -166,9 +172,8 @@
       <div id="result-create_image_prompt" class="result"></div>
     </div>
 
-    <!-- Card สำหรับ create_image -->
     <div class="card">
-      <h2>สร้าง Image</h2>
+      <h2>สร้าง Image <span id="count-ready-image" class="status-count"></span></h2>
       <div class="controls">
         <button id="btn-create-image" data-webhook-type="create_image">Trigger สร้าง Image</button>
         <div id="loading-create_image" class="loading">🔄 กำลังส่งคำขอ...</div>
@@ -176,9 +181,8 @@
       <div id="result-create_image" class="result"></div>
     </div>
 
-    <!-- Card สำหรับ post_fb -->
     <div class="card full-width">
-      <h2>โพสต์ Facebook</h2>
+      <h2>โพสต์ Facebook <span id="count-ready-post" class="status-count"></span></h2>
       <div class="controls">
         <button id="btn-post-fb" data-webhook-type="post_fb">Trigger โพสต์ Facebook</button>
         <div id="loading-post_fb" class="loading">🔄 กำลังส่งคำขอ...</div>
@@ -199,31 +203,31 @@
     const categorySelect = document.getElementById('category-select');
     const allButtons = document.querySelectorAll('button[data-webhook-type]');
 
-    // Function เพื่อเปิด/ปิดการใช้งานปุ่มทั้งหมดและ dropdown
+    // Function to enable/disable all buttons and the dropdown
     function setButtonsDisabled(disabled) {
       allButtons.forEach(button => {
         button.disabled = disabled;
       });
-      categorySelect.disabled = disabled; // ควบคุม dropdown ด้วย
+      categorySelect.disabled = disabled; // Control the dropdown as well
     }
 
-    // Function เพื่อล้างข้อความผลลัพธ์ทั้งหมด
+    // Function to clear all result messages
     function clearAllResults() {
       document.querySelectorAll('.result').forEach(div => {
         div.innerHTML = '';
-        div.className = 'result'; // รีเซ็ต Class เพื่อลบสีสถานะ
+        div.className = 'result'; // Reset class to remove status colors
       });
     }
 
-    // Function สำหรับจัดการการ Trigger Webhook
+    // Function to handle webhook triggering
     async function triggerWebhook(webhookType, payload = null) {
-      // ล้างผลลัพธ์ก่อนหน้าและแสดง Loading สำหรับ Card ที่กำลังทำงาน
+      // Clear previous results and show loading for the active card
       clearAllResults();
       const loadingDiv = document.getElementById(`loading-${webhookType}`);
       const resultDiv = document.getElementById(`result-${webhookType}`);
 
       loadingDiv.style.display = 'block';
-      setButtonsDisabled(true); // ปิดการใช้งานปุ่มทั้งหมด
+      setButtonsDisabled(true); // Disable all buttons
 
       let response;
       try {
@@ -235,36 +239,39 @@
         };
 
         if (webhookType === 'create_idea') {
-          fetchOptions.method = 'POST'; // create_idea เป็น POST request
+          fetchOptions.method = 'POST'; // create_idea is a POST request
           fetchOptions.body = JSON.stringify(payload);
         }
 
         response = await fetch(`/trigger/${webhookType}`, fetchOptions);
-        const data = await response.json(); // พยายาม Parse JSON เสมอ
+        const data = await response.json(); // Always try to parse JSON
 
         loadingDiv.style.display = 'none';
-        setButtonsDisabled(false); // เปิดการใช้งานปุ่มทั้งหมด
+        setButtonsDisabled(false); // Enable all buttons
 
         if (response.ok) {
-          resultDiv.textContent = `✅ สำเร็จ! สถานะ: ${response.status}. ตอบกลับ: ${JSON.stringify(data.response_text || data)}`;
+          resultDiv.textContent = `✅ สำเร็จ! สถานะ: ${response.status}.`;
           resultDiv.classList.add('success');
         } else {
-          // สร้างลิงก์ไปยังหน้า Workflow สำหรับกรณี Error
+          // Create a link to the workflow page for error cases
           const workflowPageUrl = workflowPageUrls[webhookType] || '#';
           resultDiv.innerHTML = `❌ ล้มเหลว! สถานะ: ${response.status}. ข้อผิดพลาด: ${data.error || JSON.stringify(data)}<br><a href="${workflowPageUrl}" target="_blank">ไปยังหน้า Workflow</a>`;
           resultDiv.classList.add('error');
         }
       } catch (error) {
         loadingDiv.style.display = 'none';
-        setButtonsDisabled(false); // เปิดการใช้งานปุ่มทั้งหมด
+        setButtonsDisabled(false); // Enable all buttons
         const workflowPageUrl = workflowPageUrls[webhookType] || '#';
         resultDiv.innerHTML = `⚠️ เกิดข้อผิดพลาดในการเชื่อมต่อ: ${error.message}<br><a href="${workflowPageUrl}" target="_blank">ไปยังหน้า Workflow</a>`;
         resultDiv.classList.add('warning');
         console.error("Fetch Error:", error);
+      } finally {
+        // Always refresh status counts after a webhook trigger attempt
+        fetchStatusCounts();
       }
     }
 
-    // Event Listeners สำหรับปุ่ม Webhook ทั้งหมด
+    // Event Listeners for all webhook buttons
     allButtons.forEach(button => {
       button.addEventListener('click', () => {
         const webhookType = button.dataset.webhookType;
@@ -276,20 +283,20 @@
             resultDiv.classList.add('warning');
             return;
           }
-          triggerWebhook(webhookType, { category: selectedCategory }); // ส่ง Payload สำหรับ create_idea
+          triggerWebhook(webhookType, { category: selectedCategory }); // Send payload for create_idea
         } else {
-          triggerWebhook(webhookType); // ไม่มี Payload สำหรับ Webhook อื่นๆ
+          triggerWebhook(webhookType); // No payload for other webhooks
         }
       });
     });
 
-    // Function สำหรับดึง Category มาใส่ใน Dropdown เมื่อโหลดหน้า
+    // Function to fetch categories and populate the dropdown when the page loads
     async function fetchCategories() {
       try {
-        const response = await fetch('/get_categories'); // เรียก API Endpoint ใน Flask
+        const response = await fetch('/get_categories'); // Call Flask API Endpoint
         if (response.ok) {
           const data = await response.json();
-          categorySelect.innerHTML = '<option value="">-- เลือกหัวข้อ --</option>'; // รีเซ็ต Dropdown
+          categorySelect.innerHTML = '<option value="">-- เลือกหัวข้อ --</option>'; // Reset dropdown
           if (data.categories && data.categories.length > 0) {
             data.categories.forEach(category => {
               const option = document.createElement('option');
@@ -297,23 +304,46 @@
               option.textContent = category;
               categorySelect.appendChild(option);
             });
-            categorySelect.disabled = false; // เปิดการใช้งาน Dropdown
-            document.getElementById('btn-create-idea').disabled = false; // เปิดการใช้งานปุ่ม Trigger Idea
+            categorySelect.disabled = false; // Enable dropdown
+            document.getElementById('btn-create-idea').disabled = false; // Enable Trigger Idea button
           } else {
-            categorySelect.innerHTML = '<option value="">ไม่พบ Category</option>';
+            categorySelect.innerHTML = '<option value="">ไม่พบหัวข้อ</option>';
           }
         } else {
-          categorySelect.innerHTML = '<option value="">โหลด Category ไม่สำเร็จ</option>';
+          categorySelect.innerHTML = '<option value="">โหลดหัวข้อไม่สำเร็จ</option>';
           console.error('Failed to fetch categories:', response.status);
         }
       } catch (error) {
-        categorySelect.innerHTML = '<option value="">เกิดข้อผิดพลาดในการโหลด Category</option>';
+        categorySelect.innerHTML = '<option value="">เกิดข้อผิดพลาดในการโหลดหัวข้อ</option>';
         console.error('Error fetching categories:', error);
       }
     }
 
-    // เรียก fetchCategories เมื่อ DOM โหลดเสร็จ
-    document.addEventListener('DOMContentLoaded', fetchCategories);
+    // NEW: Function to fetch status counts and update the UI
+    async function fetchStatusCounts() {
+      try {
+        const response = await fetch('/get_status_counts'); // Call Flask API Endpoint
+        if (response.ok) {
+          const data = await response.json();
+          const counts = data.status_counts;
+          document.getElementById('count-ready-prompt').textContent = `(${counts.ready_prompt || 0})`;
+          document.getElementById('count-ready-image').textContent = `(${counts.ready_image || 0})`;
+          document.getElementById('count-ready-post').textContent = `(${counts.ready_post || 0})`;
+        } else {
+          console.error('Failed to fetch status counts:', response.status);
+          // Optionally display an error message for counts
+        }
+      } catch (error) {
+        console.error('Error fetching status counts:', error);
+        // Optionally display an error message for counts
+      }
+    }
+
+    // Call initial data fetches when the DOM is fully loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchCategories(); // Fetch categories for the dropdown
+      fetchStatusCounts(); // Fetch status counts for the buttons
+    });
   </script>
 </body>
 </html>

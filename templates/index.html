@@ -3,110 +3,317 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ทดสอบ Webhook</title>
+  <title>n8n Workflow Dashboard</title>
   <style>
+    /* Base Styles */
     body {
-      font-family: sans-serif;
+      font-family: 'Inter', sans-serif; /* ใช้ Font Inter */
       padding: 1rem;
       margin: 0;
-      background-color: #f9f9f9;
+      background-color: #f0f2f5; /* สีพื้นหลังเทาอ่อน */
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
-      min-height: 100vh; /* ทำให้เนื้อหาอยู่ตรงกลางหน้าจอ */
+      min-height: 100vh;
+      box-sizing: border-box;
     }
     h1 {
       font-size: 1.8rem;
-      margin-bottom: 2rem;
+      color: #333;
+      margin-bottom: 1.5rem;
       text-align: center;
+    }
+    .card-container {
+      width: 100%;
+      max-width: 500px; /* กำหนดความกว้างสูงสุดของการ์ดบนมือถือ */
     }
     .card {
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      background: #ffffff;
+      border-radius: 12px; /* มุมโค้งมนมากขึ้น */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08); /* เงาที่นุ่มนวลขึ้น */
       margin-bottom: 1rem;
-      padding: 2rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .card h2 {
+      font-size: 1.4rem;
+      color: #333;
+      margin: 0;
       text-align: center;
-      width: 90%;
-      max-width: 400px; /* จำกัดความกว้างสูงสุด */
     }
-    button {
-      background-color: #007bff; /* สีน้ำเงิน */
-      color: #fff;
-      padding: 1rem 2rem;
-      font-size: 1.2rem;
-      border: none;
-      border-radius: 8px;
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem; /* ระยะห่างระหว่าง Control */
+    }
+    .controls select,
+    .controls button {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      font-size: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 8px; /* ปุ่มและ Dropdown มีมุมโค้งมน */
       cursor: pointer;
-      transition: background-color 0.3s ease;
-      width: 100%; /* ปุ่มเต็มความกว้างของการ์ด */
+      transition: all 0.2s ease-in-out;
+      box-sizing: border-box;
     }
-    button:hover {
+    .controls select {
+      background-color: #f8f8f8;
+      color: #333;
+      appearance: none; /* ลบ Arrow เริ่มต้นของ Dropdown */
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%23333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-down"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+      background-repeat: no-repeat;
+      background-position: right 0.8rem center;
+      background-size: 1.2em;
+    }
+    .controls button {
+      background-color: #007bff; /* สีน้ำเงินหลัก */
+      color: #fff;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .controls button:hover:not(:disabled) {
       background-color: #0056b3; /* สีน้ำเงินเข้มขึ้นเมื่อ Hover */
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    .controls button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+      box-shadow: none;
     }
     .loading {
       display: none;
       text-align: center;
-      margin-top: 1rem;
-      font-size: 1rem;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
       color: #555;
     }
     .result {
-      margin-top: 1rem;
-      font-size: 1rem;
+      margin-top: 0.75rem;
+      font-size: 0.9rem;
       word-wrap: break-word;
       white-space: pre-wrap; /* เพื่อให้ขึ้นบรรทัดใหม่ได้ */
+      padding: 0.75rem;
+      border-radius: 6px;
+      background-color: #e9ecef;
+      color: #333;
+      border: 1px solid #dee2e6;
     }
     .result.success {
-      color: green;
+      background-color: #d4edda;
+      color: #155724;
+      border-color: #c3e6cb;
     }
     .result.error {
-      color: red;
+      background-color: #f8d7da;
+      color: #721c24;
+      border-color: #f5c6cb;
     }
     .result.warning {
-      color: orange;
+      background-color: #fff3cd;
+      color: #856404;
+      border-color: #ffeeba;
+    }
+
+    /* Responsive Adjustments (สำหรับหน้าจอที่กว้างขึ้น) */
+    @media (min-width: 600px) {
+      h1 {
+        font-size: 2.2rem;
+      }
+      .card-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* 2 คอลัมน์บนหน้าจอที่กว้างขึ้น */
+        gap: 1.5rem;
+        max-width: 900px;
+      }
+      .card {
+        padding: 2rem;
+      }
+      .card.full-width { /* สำหรับการ์ดที่ต้องการให้กินพื้นที่เต็มความกว้าง */
+        grid-column: 1 / -1;
+      }
     }
   </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h1>ทดสอบ n8n Webhook</h1>
-  <div class="card">
-    <button id="test-webhook-button">Trigger Webhook</button>
-    <div id="loading" class="loading">🔄 กำลังส่งคำขอ...</div>
-    <div id="result" class="result"></div>
+  <h1>n8n Workflow Dashboard</h1>
+
+  <div class="card-container">
+    <!-- Card สำหรับ create_idea (มี Dropdown เลือกหัวข้อ) -->
+    <div class="card full-width">
+      <h2>สร้าง Idea (เลือกหัวข้อ)</h2>
+      <div class="controls">
+        <select id="category-select" disabled>
+          <option value="">กำลังโหลด Category...</option>
+          <!-- Options จะถูกเพิ่มโดย JavaScript -->
+        </select>
+        <button id="btn-create-idea" data-webhook-type="create_idea" disabled>Trigger สร้าง Idea</button>
+        <div id="loading-create_idea" class="loading">🔄 กำลังส่งคำขอ...</div>
+      </div>
+      <div id="result-create_idea" class="result"></div>
+    </div>
+
+    <!-- Card สำหรับ create_image_prompt -->
+    <div class="card">
+      <h2>สร้าง Image Prompt</h2>
+      <div class="controls">
+        <button id="btn-create-image-prompt" data-webhook-type="create_image_prompt">Trigger สร้าง Image Prompt</button>
+        <div id="loading-create_image_prompt" class="loading">🔄 กำลังส่งคำขอ...</div>
+      </div>
+      <div id="result-create_image_prompt" class="result"></div>
+    </div>
+
+    <!-- Card สำหรับ create_image -->
+    <div class="card">
+      <h2>สร้าง Image</h2>
+      <div class="controls">
+        <button id="btn-create-image" data-webhook-type="create_image">Trigger สร้าง Image</button>
+        <div id="loading-create_image" class="loading">🔄 กำลังส่งคำขอ...</div>
+      </div>
+      <div id="result-create_image" class="result"></div>
+    </div>
+
+    <!-- Card สำหรับ post_fb -->
+    <div class="card full-width">
+      <h2>โพสต์ Facebook</h2>
+      <div class="controls">
+        <button id="btn-post-fb" data-webhook-type="post_fb">Trigger โพสต์ Facebook</button>
+        <div id="loading-post_fb" class="loading">🔄 กำลังส่งคำขอ...</div>
+      </div>
+      <div id="result-post_fb" class="result"></div>
+    </div>
   </div>
 
   <script>
-    const webhookTestUrl = "/trigger-webhook"; // Endpoint ที่ Flask จะรับ
-    const testButton     = document.getElementById("test-webhook-button");
-    const loader         = document.getElementById("loading");
-    const resultDiv      = document.getElementById("result");
+    // Map webhook types to their corresponding workflow page URLs for error linking
+    const workflowPageUrls = {
+      'create_idea': '{{ workflow_pages.create_idea }}',
+      'create_image_prompt': '{{ workflow_pages.create_image_prompt }}',
+      'create_image': '{{ workflow_pages.create_image }}',
+      'post_fb': '{{ workflow_pages.post_fb }}'
+    };
 
-    testButton.addEventListener("click", () => {
-      loader.style.display = "block";
-      resultDiv.innerHTML  = ""; // ล้างผลลัพธ์เก่า
-      resultDiv.className  = "result"; // ล้าง class สี
+    const categorySelect = document.getElementById('category-select');
+    const allButtons = document.querySelectorAll('button[data-webhook-type]');
 
-      fetch(webhookTestUrl)
-        .then(response => {
-          loader.style.display = "none";
-          if (response.ok) {
-            resultDiv.textContent = `✅ สำเร็จ! Status: ${response.status}`;
-            resultDiv.classList.add("success");
-          } else {
-            resultDiv.innerHTML = `❌ ล้มเหลว! Status: ${response.status}<br>โปรดตรวจสอบ n8n Webhook URL ของคุณ`;
-            resultDiv.classList.add("error");
+    // Function เพื่อเปิด/ปิดการใช้งานปุ่มทั้งหมดและ dropdown
+    function setButtonsDisabled(disabled) {
+      allButtons.forEach(button => {
+        button.disabled = disabled;
+      });
+      categorySelect.disabled = disabled; // ควบคุม dropdown ด้วย
+    }
+
+    // Function เพื่อล้างข้อความผลลัพธ์ทั้งหมด
+    function clearAllResults() {
+      document.querySelectorAll('.result').forEach(div => {
+        div.innerHTML = '';
+        div.className = 'result'; // รีเซ็ต Class เพื่อลบสีสถานะ
+      });
+    }
+
+    // Function สำหรับจัดการการ Trigger Webhook
+    async function triggerWebhook(webhookType, payload = null) {
+      // ล้างผลลัพธ์ก่อนหน้าและแสดง Loading สำหรับ Card ที่กำลังทำงาน
+      clearAllResults();
+      const loadingDiv = document.getElementById(`loading-${webhookType}`);
+      const resultDiv = document.getElementById(`result-${webhookType}`);
+
+      loadingDiv.style.display = 'block';
+      setButtonsDisabled(true); // ปิดการใช้งานปุ่มทั้งหมด
+
+      let response;
+      try {
+        let fetchOptions = {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
           }
-        })
-        .catch(error => {
-          loader.style.display = "none";
-          resultDiv.innerHTML = `⚠️ เกิดข้อผิดพลาดในการเชื่อมต่อ: ${error.message}<br>
-            โปรดตรวจสอบ Console สำหรับรายละเอียดเพิ่มเติม และ URL ของคุณ`;
-          resultDiv.classList.add("warning");
-          console.error("Fetch Error:", error);
-        });
+        };
+
+        if (webhookType === 'create_idea') {
+          fetchOptions.method = 'POST'; // create_idea เป็น POST request
+          fetchOptions.body = JSON.stringify(payload);
+        }
+
+        response = await fetch(`/trigger/${webhookType}`, fetchOptions);
+        const data = await response.json(); // พยายาม Parse JSON เสมอ
+
+        loadingDiv.style.display = 'none';
+        setButtonsDisabled(false); // เปิดการใช้งานปุ่มทั้งหมด
+
+        if (response.ok) {
+          resultDiv.textContent = `✅ สำเร็จ! สถานะ: ${response.status}. ตอบกลับ: ${JSON.stringify(data.response_text || data)}`;
+          resultDiv.classList.add('success');
+        } else {
+          // สร้างลิงก์ไปยังหน้า Workflow สำหรับกรณี Error
+          const workflowPageUrl = workflowPageUrls[webhookType] || '#';
+          resultDiv.innerHTML = `❌ ล้มเหลว! สถานะ: ${response.status}. ข้อผิดพลาด: ${data.error || JSON.stringify(data)}<br><a href="${workflowPageUrl}" target="_blank">ไปยังหน้า Workflow</a>`;
+          resultDiv.classList.add('error');
+        }
+      } catch (error) {
+        loadingDiv.style.display = 'none';
+        setButtonsDisabled(false); // เปิดการใช้งานปุ่มทั้งหมด
+        const workflowPageUrl = workflowPageUrls[webhookType] || '#';
+        resultDiv.innerHTML = `⚠️ เกิดข้อผิดพลาดในการเชื่อมต่อ: ${error.message}<br><a href="${workflowPageUrl}" target="_blank">ไปยังหน้า Workflow</a>`;
+        resultDiv.classList.add('warning');
+        console.error("Fetch Error:", error);
+      }
+    }
+
+    // Event Listeners สำหรับปุ่ม Webhook ทั้งหมด
+    allButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const webhookType = button.dataset.webhookType;
+        if (webhookType === 'create_idea') {
+          const selectedCategory = categorySelect.value;
+          if (!selectedCategory) {
+            const resultDiv = document.getElementById(`result-${webhookType}`);
+            resultDiv.innerHTML = '⚠️ กรุณาเลือกหัวข้อ ก่อน';
+            resultDiv.classList.add('warning');
+            return;
+          }
+          triggerWebhook(webhookType, { category: selectedCategory }); // ส่ง Payload สำหรับ create_idea
+        } else {
+          triggerWebhook(webhookType); // ไม่มี Payload สำหรับ Webhook อื่นๆ
+        }
+      });
     });
+
+    // Function สำหรับดึง Category มาใส่ใน Dropdown เมื่อโหลดหน้า
+    async function fetchCategories() {
+      try {
+        const response = await fetch('/get_categories'); // เรียก API Endpoint ใน Flask
+        if (response.ok) {
+          const data = await response.json();
+          categorySelect.innerHTML = '<option value="">-- เลือกหัวข้อ --</option>'; // รีเซ็ต Dropdown
+          if (data.categories && data.categories.length > 0) {
+            data.categories.forEach(category => {
+              const option = document.createElement('option');
+              option.value = category;
+              option.textContent = category;
+              categorySelect.appendChild(option);
+            });
+            categorySelect.disabled = false; // เปิดการใช้งาน Dropdown
+            document.getElementById('btn-create-idea').disabled = false; // เปิดการใช้งานปุ่ม Trigger Idea
+          } else {
+            categorySelect.innerHTML = '<option value="">ไม่พบ Category</option>';
+          }
+        } else {
+          categorySelect.innerHTML = '<option value="">โหลด Category ไม่สำเร็จ</option>';
+          console.error('Failed to fetch categories:', response.status);
+        }
+      } catch (error) {
+        categorySelect.innerHTML = '<option value="">เกิดข้อผิดพลาดในการโหลด Category</option>';
+        console.error('Error fetching categories:', error);
+      }
+    }
+
+    // เรียก fetchCategories เมื่อ DOM โหลดเสร็จ
+    document.addEventListener('DOMContentLoaded', fetchCategories);
   </script>
 </body>
 </html>

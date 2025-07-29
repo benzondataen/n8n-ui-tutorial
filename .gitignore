@@ -8,7 +8,9 @@ __pycache__/
 venv/
 env/
 .env/
+.env2/
 .envrc
+deploy2.sh
 
 # IDE specific files (common ones)
 .vscode/ # Visual Studio Code settings
